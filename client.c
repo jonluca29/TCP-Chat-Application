@@ -36,11 +36,11 @@ int createSocket(){
     return socket(AF_INET, SOCK_STREAM, 0);
 }
 
-int specifyAddressAndConnect(int sockfd, struct sockaddr_in* address){ 
+int specifyAddressAndConnect(int sockfd, struct sockaddr_in* address, char *ip){ 
     address->sin_family = AF_INET;
     address->sin_port = htons(9002);
-    address->sin_addr.s_addr = INADDR_ANY;   
-    
+    inet_pton(AF_INET, ip, &address->sin_addr);
+
     return connect(sockfd, (struct sockaddr *)address, sizeof(*address));
 }
 
@@ -78,18 +78,24 @@ void sendMessages(int sockfd){
 
         send(sockfd, msg, strlen(msg)+1, 0);
     }
+    free(name);
 }
 
 int main(){    
     int sockfd = createSocket();
+    char serverIP[16];
     if (sockfd == -1){
         printf("Socket creation failed.\n");
         return 1;
     }
+    
+    printf("Please Enter the ip address of the server: ");
+    fgets(serverIP, 16, stdin);
+    serverIP[strcspn(serverIP, "\n")] = '\0';
 
     // specify the address for the socket and connect to the server
     struct sockaddr_in server_address;
-    int connectStatus = specifyAddressAndConnect(sockfd, &server_address);
+    int connectStatus = specifyAddressAndConnect(sockfd, &server_address, serverIP);
     
     // error handle for connection errors
     if (connectStatus == -1){

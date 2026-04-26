@@ -6,7 +6,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
-
+#include <string.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <arpa/inet.h>
 
 struct acceptedSock{
     int acceptedSockFD;
@@ -36,7 +39,7 @@ void *handleClient(void *arg){
         if (bytes_received == 0) {
             printf("Client disconnected\n");
             break;
-        }else{
+        }else if (bytes_received < 0){
             printf("Error occured.\n");
         }
         
@@ -75,7 +78,7 @@ int specifyAddressAndBind(int sockfd, struct sockaddr_in* address){
     address->sin_family = AF_INET;
     address->sin_port = htons(9002);
     address->sin_addr.s_addr = INADDR_ANY;
-    
+
     return bind(sockfd, (struct sockaddr*)address, sizeof(*address));
 }
 
@@ -103,9 +106,30 @@ void acceptClients(int sockfd){
     }
 }
 
+char *getIP(){
+    int fd;
+    struct ifreq ifr;
+
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    ifr.ifr_addr.sa_family = AF_INET;
+
+    snprintf(ifr.ifr_name, IFNAMSIZ, "en0");
+
+    ioctl(fd, SIOCGIFADDR, &ifr);
+
+    close(fd);
+
+    /* and more importantly */
+    char *ip = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+    
+    return strdup(ip);
+}
 
 int main(){
-    
+    char *ip = getIP();
+    printf("Server address: %s\n", ip);
+
     // create the socket
     int sockfd = createSocket();
     if (sockfd == -1){
@@ -139,6 +163,7 @@ int main(){
 
     // close the socket
     close(sockfd);
-    
+
+    free(ip);
     return 0;
 }
